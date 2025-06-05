@@ -28,11 +28,11 @@ namespace apbd12.Controllers
         }
 
         [HttpPost("{idTrip}/clients")]
-        public async Task<IActionResult> AddClientToTrip(int idTrip)
+        public async Task<IActionResult> AddClientToTrip(int idTrip, [FromBody] ClientTripDTO clientTripDTO)
         {
+            await _dbService.AddClientToTrip(idTrip, clientTripDTO);
             
+            return StatusCode(200, "Klient zapisany na wycieczke");
         }
-        
-        
     }
 }

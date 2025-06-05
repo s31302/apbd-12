@@ -69,17 +69,57 @@ public class DbService : IDbService
 
     public async Task AddClientToTrip(int idTrip, ClientTripDTO clientTripDTO)
     {
-        var client = await _dbContext.Clients.CountAsync(c => c.Pesel == clientTripDTO.Pesel);
+        var clientWithPeselExist = await _dbContext.Clients.FirstOrDefaultAsync(c => c.Pesel == clientTripDTO.Pesel);
 
-        if (client > 0)
+        if (clientWithPeselExist != null)
         {
             throw new BadRequestException("Klient juz istnieje");
         }
         
-        //po co sprawdzac czy kilent jest na wyczieczce jak juz sprawdzam ze jest w bazie danych
+        //po co sprawdzac czy kilent jest na wyczieczce jak juz sprawdzam ze jest w bazie danych 
+        //lepiej by bylo chyba sprawdzac czy klient nie istnieje? 
         
-        var clientt = await _dbContext.Clients.FirstOrDefaultAsync(c => c.Pesel == clientTripDTO.Pesel);
+        var clientTripWithPeselExist = await _dbContext.ClientTrips.FindAsync(clientWithPeselExist.IdClient, clientTripDTO.IdTrip);    
         
-        var clienttrip = await _dbContext.ClientTrips.FindAsync(clientt.IdClient, clientTripDTO.IdTrip);    
+        if (clientTripWithPeselExist != null)
+        {
+            throw new BadRequestException("Klient juz istnieje zapisany na ta wycieczke");
+        }
+        
+        var trip = await _dbContext.Trips.FirstOrDefaultAsync(t => t.IdTrip == idTrip);
+
+        if (trip == null || trip.Name != clientTripDTO.TripName)
+        {
+            throw new BadRequestException("Wycieczka nie istnieje lub nazwa nie pasuje");
+        }
+
+        if (trip.DateFrom <= DateTime.UtcNow)
+        {
+            throw new BadRequestException("Data wycieczki jest przeszla");
+        }
+        
+        var newClient = new Models.Client
+        {
+            FirstName = clientTripDTO.FirstName,
+            LastName = clientTripDTO.LastName,
+            Email = clientTripDTO.Email,
+            Telephone = clientTripDTO.Telephone,
+            Pesel = clientTripDTO.Pesel
+        };
+
+        _dbContext.Clients.Add(newClient);
+        await _dbContext.SaveChangesAsync();
+
+       
+        var clientTrip = new Models.ClientTrip
+        {
+            IdClient = newClient.IdClient,
+            IdTrip = clientTripDTO.IdTrip,
+            RegisteredAt = DateTime.UtcNow,
+            PaymentDate = clientTripDTO.PaymentDate
+        };
+
+        _dbContext.ClientTrips.Add(clientTrip);
+        await _dbContext.SaveChangesAsync();
     }
 }

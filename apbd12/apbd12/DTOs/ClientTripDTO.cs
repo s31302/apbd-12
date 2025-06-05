@@ -9,6 +9,6 @@ public class ClientTripDTO
     public string Pesel { get; set; }
     public int IdTrip { get; set; }
     public string TripName { get; set; }
-    public DateTime PaymentDate { get; set; } 
+    public DateTime? PaymentDate { get; set; } 
     
 }
