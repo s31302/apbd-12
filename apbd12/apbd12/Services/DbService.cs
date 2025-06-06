@@ -52,7 +52,7 @@ public class DbService : IDbService
         };
     }
 
-    public async Task DeleteClient(int idClient)
+    public async Task<bool> DeleteClient(int idClient)
     {
         var client = await _dbContext.Clients.FindAsync(idClient);
         
@@ -60,13 +60,84 @@ public class DbService : IDbService
 
         if (clientTrip > 0)
         {
-            throw new BadRequestException("Klient ma wycieczki");
+            return false;
         }
         
         _dbContext.Clients.Remove(client);
         await _dbContext.SaveChangesAsync();
+        
+        return true;
     }
 
+    public async Task<bool> ClinetWithPeselExist( ClientTripDTO clientTripDTO)
+    {
+        var clientWithPeselExist = await _dbContext.Clients.FirstOrDefaultAsync(c => c.Pesel == clientTripDTO.Pesel);
+
+        if (clientWithPeselExist != null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    
+    public async Task<bool> TripWithIdExist(int idTrip, ClientTripDTO clientTripDTO)
+    {
+        //sprawdzam dla id z żądania a nie z body
+        var trip = await _dbContext.Trips.FirstOrDefaultAsync(t => t.IdTrip == idTrip);
+
+        if (trip == null || trip.Name != clientTripDTO.TripName)
+        {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public async Task<bool> TripDateIsOk(int idTrip)
+    {
+        
+        var trip = await _dbContext.Trips.FirstOrDefaultAsync(t => t.IdTrip == idTrip);
+
+        if (trip.DateFrom <= DateTime.UtcNow)
+        {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public async Task SignClientOnTrip(int idTrip, ClientTripDTO clientTripDTO)
+    {
+        
+        var newClient = new Models.Client
+        {
+            FirstName = clientTripDTO.FirstName,
+            LastName = clientTripDTO.LastName,
+            Email = clientTripDTO.Email,
+            Telephone = clientTripDTO.Telephone,
+            Pesel = clientTripDTO.Pesel
+        };
+        
+        _dbContext.Clients.Add(newClient);
+        await _dbContext.SaveChangesAsync();
+        
+        
+        var clientTrip = new Models.ClientTrip
+        {
+            IdClient = newClient.IdClient,
+            IdTrip = idTrip,
+            RegisteredAt = DateTime.UtcNow,
+            PaymentDate = clientTripDTO.PaymentDate
+        };
+
+        _dbContext.ClientTrips.Add(clientTrip);
+        await _dbContext.SaveChangesAsync();
+    }
+    
+    
+    //nizej pierwsza wersja ale jej nie uzywam bo zmaiast bad reqest jest code 500
+    
     public async Task AddClientToTrip(int idTrip, ClientTripDTO clientTripDTO)
     {
         var clientWithPeselExist = await _dbContext.Clients.FirstOrDefaultAsync(c => c.Pesel == clientTripDTO.Pesel);
@@ -77,14 +148,16 @@ public class DbService : IDbService
         }
         
         //po co sprawdzac czy kilent jest na wyczieczce jak juz sprawdzam ze jest w bazie danych 
-        //lepiej by bylo chyba sprawdzac czy klient nie istnieje? 
+        // komentuje przez to drugi punkt
         
+        /*
         var clientTripWithPeselExist = await _dbContext.ClientTrips.FindAsync(clientWithPeselExist.IdClient, clientTripDTO.IdTrip);    
         
         if (clientTripWithPeselExist != null)
         {
             throw new BadRequestException("Klient juz istnieje zapisany na ta wycieczke");
         }
+        */
         
         var trip = await _dbContext.Trips.FirstOrDefaultAsync(t => t.IdTrip == idTrip);
 
@@ -106,15 +179,15 @@ public class DbService : IDbService
             Telephone = clientTripDTO.Telephone,
             Pesel = clientTripDTO.Pesel
         };
-
+        
         _dbContext.Clients.Add(newClient);
         await _dbContext.SaveChangesAsync();
-
-       
+        
+        
         var clientTrip = new Models.ClientTrip
         {
             IdClient = newClient.IdClient,
-            IdTrip = clientTripDTO.IdTrip,
+            IdTrip = idTrip,
             RegisteredAt = DateTime.UtcNow,
             PaymentDate = clientTripDTO.PaymentDate
         };

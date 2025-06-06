@@ -30,7 +30,26 @@ namespace apbd12.Controllers
         [HttpPost("{idTrip}/clients")]
         public async Task<IActionResult> AddClientToTrip(int idTrip, [FromBody] ClientTripDTO clientTripDTO)
         {
-            await _dbService.AddClientToTrip(idTrip, clientTripDTO);
+            var clinetWithPeselExist = await _dbService.ClinetWithPeselExist(clientTripDTO);
+            if (!clinetWithPeselExist)
+            {
+                return BadRequest("Klient juz istnieje");
+            }
+            
+            var tripWithIdExist = await _dbService.TripWithIdExist(idTrip, clientTripDTO);
+            if (!tripWithIdExist)
+            {
+                return BadRequest("Wycieczka nie istnieje lub nazwa nie pasuje");
+            }
+            
+            var dateTripOk = await _dbService.TripDateIsOk(idTrip);
+            if (!dateTripOk)
+            {
+                return BadRequest("Data wycieczki jest przeszla");
+            }
+            
+            await _dbService.SignClientOnTrip(idTrip, clientTripDTO);
+            
             
             return StatusCode(200, "Klient zapisany na wycieczke");
         }

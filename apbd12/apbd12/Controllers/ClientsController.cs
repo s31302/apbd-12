@@ -22,7 +22,11 @@ namespace apbd12.Controllers
         [HttpDelete("{idClient}")]
         public async Task<IActionResult> DeleteClient(int idClient)
         {
-            await _dbService.DeleteClient(idClient);
+            var deleteClient = await _dbService.DeleteClient(idClient);
+            if (!deleteClient)
+            {
+                return BadRequest("Klient ma wycieczki");
+            }
 
             return Ok("Client deleted");
         }

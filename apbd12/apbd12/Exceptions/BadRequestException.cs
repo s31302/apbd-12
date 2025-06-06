@@ -1,5 +1,5 @@
 ﻿namespace apbd12.Exceptions;
-
+//ostatecznie nie uzylam
 public class BadRequestException : Exception
 {
     public BadRequestException()
